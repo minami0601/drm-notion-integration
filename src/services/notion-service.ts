@@ -80,57 +80,6 @@ export async function getStudents(studentIds: string[]): Promise<NotionPageId[]>
 }
 
 /**
- * イベントを登録する関数
- *
- * @param eventName イベント名
- * @param eventDate 開催日
- * @param students 参加生徒のNotionページIDリスト
- * @returns 作成されたイベントのID
- */
-export async function createEvent(eventName: string, eventDate: string, students: NotionPageId[]): Promise<{id: string}> {
-  if (!EVENT_DATABASE_ID) {
-    throw new Error('EVENT_DATABASE_ID環境変数が設定されていません');
-  }
-
-  try {
-    // イベントページを作成
-    const response = await notion.pages.create({
-      parent: {
-        database_id: EVENT_DATABASE_ID,
-      },
-      properties: {
-        '名前': {
-          title: [
-            {
-              text: {
-                content: eventName
-              }
-            }
-          ]
-        },
-        '開催日': {
-          date: {
-            start: eventDate
-          }
-        },
-        '参加者': {
-          relation: students.map(studentId => ({
-            id: studentId
-          }))
-        }
-      }
-    });
-
-    return {
-      id: response.id
-    };
-  } catch (error) {
-    console.error('イベント登録エラー:', error);
-    throw error;
-  }
-}
-
-/**
  * 既存のイベントを更新する関数
  *
  * @param pageId イベントページのID
@@ -139,10 +88,6 @@ export async function createEvent(eventName: string, eventDate: string, students
  */
 export async function updateEventParticipants(pageId: string, students: NotionPageId[]): Promise<{id: string}> {
   try {
-    if (!pageId) {
-      throw new Error('有効なページIDが指定されていません');
-    }
-
     // イベントページを更新
     const response = await notion.pages.update({
       page_id: pageId,
