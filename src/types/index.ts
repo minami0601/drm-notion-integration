@@ -11,13 +11,3 @@ export interface Env {
  * NotionのページID型
  */
 export type NotionPageId = string;
-
-/**
- * APIレスポンスの基本型
- */
-export interface ApiResponse {
-  success: boolean;
-  message?: string;
-  error?: string;
-  data?: Record<string, unknown>;
-}
