@@ -8,6 +8,33 @@ let STUDENT_DATABASE_ID: string;
 let EVENT_DATABASE_ID: string;
 
 /**
+ * バッチサイズの定数
+ * NotionのAPIフィルター制限（最大100項目）に対応するため
+ */
+const BATCH_SIZE = 90; // 余裕を持って90に設定
+
+/**
+ * 配列をバッチに分割する関数
+ *
+ * @param items 分割する配列
+ * @param batchSize バッチサイズ
+ * @returns バッチの配列
+ */
+function batchItems<T>(items: T[], batchSize: number = BATCH_SIZE): T[][] {
+  return chunk(items, batchSize);
+}
+
+/**
+ * バッチ処理の結果を集約する関数
+ *
+ * @param results 集約する結果の配列
+ * @returns 集約された結果の配列
+ */
+function aggregateResults<T>(results: T[][]): T[] {
+  return results.flat();
+}
+
+/**
  * Notion APIクライアントを初期化する関数
  *
  * @param apiKey Notion API Key
@@ -32,14 +59,11 @@ export async function getStudents(studentIds: string[]): Promise<NotionPageId[]>
   }
 
   try {
-    // NotionのAPIフィルター制限（最大100項目）に対応するため、IDをバッチ処理
-    const BATCH_SIZE = 90; // 余裕を持って90に設定
+    // IDをバッチに分割
+    const batches = batchItems(studentIds);
 
-    // remedaのchunk関数を使用してバッチに分割
-    const batches = chunk(studentIds, BATCH_SIZE);
-
-    // 各バッチを順次処理し、結果を集約
-    let allResults: NotionPageId[] = [];
+    // 各バッチを順次処理
+    const batchResults: NotionPageId[][] = [];
 
     for (let i = 0; i < batches.length; i++) {
       const batch = batches[i];
@@ -58,12 +82,15 @@ export async function getStudents(studentIds: string[]): Promise<NotionPageId[]>
 
         // 結果のIDのみを抽出
         const pageIds = response.results.map(page => page.id);
-        allResults = [...allResults, ...pageIds];
+        batchResults.push(pageIds);
       } catch (batchError) {
         console.error(`バッチ${i + 1}の処理中にエラーが発生しました:`, batchError);
         throw batchError;
       }
     }
+
+    // 結果を集約
+    const allResults = aggregateResults(batchResults);
 
     // 見つからなかった生徒IDがあれば報告
     if (allResults.length < studentIds.length) {
