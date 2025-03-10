@@ -12,7 +12,9 @@ interface CsvRow {
  * @returns Readable stream
  */
 function stringToStream(string: string): Readable {
-	const stream = new Readable();
+	const stream = new Readable({
+		read() {}, // 必須のreadメソッドを実装
+	});
 	stream.push(string);
 	stream.push(null);
 	return stream;
