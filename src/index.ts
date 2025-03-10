@@ -16,41 +16,32 @@ app.get('/webhook', (c) => {
 
 // POSTリクエストのWebhookエンドポイント
 app.post('/webhook', async (c) => {
-  try {
-    // 環境変数の設定とNotionクライアントの初期化
-    const env = c.env;
-    initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID, env.EVENT_DATABASE_ID);
+  // 環境変数の設定とNotionクライアントの初期化
+  const env = c.env;
+  initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID, env.EVENT_DATABASE_ID);
 
-    // Content-Typeに基づいてリクエストボディを処理
-    const contentType = c.req.header('content-type') || '';
+  // Content-Typeに基づいてリクエストボディを処理
+  const contentType = c.req.header('content-type') || '';
 
-    if (contentType.includes('application/json')) {
-      // JSONデータの処理
-      try {
-        const jsonData = await c.req.json();
-        return await processJsonRequest(c, jsonData);
-      } catch (jsonError) {
-        console.error('JSONデータの解析に失敗しました:', jsonError);
-        return c.json({
-          success: false,
-          error: `JSONデータの解析に失敗しました: ${jsonError instanceof Error ? jsonError.message : '不明なエラー'}`
-        }, 400);
-      }
-    }
-
-    // サポートされていないContent-Type
-    console.error(`サポートされていないContent-Type: ${contentType}`);
+  if (!contentType.includes('application/json')) {
     return c.json({
       success: false,
       error: `サポートされていないContent-Type: ${contentType}. 'application/json'を使用してください`
     }, 415);
-  } catch (error) {
-    console.error('Webhook処理エラー:', error);
+  }
+
+  // JSONデータの処理
+  try {
+    const jsonData = await c.req.json();
+    return await processJsonRequest(c, jsonData);
+  } catch (jsonError) {
+    console.error('JSONデータの解析に失敗しました:', jsonError);
     return c.json({
       success: false,
-      error: `予期しないエラーが発生しました: ${error instanceof Error ? error.message : '不明なエラー'}`
-    }, 500);
+      error: `JSONデータの解析に失敗しました: ${jsonError instanceof Error ? jsonError.message : '不明なエラー'}`
+    }, 400);
   }
+
 });
 
 // 基本的なヘルスチェックエンドポイント
