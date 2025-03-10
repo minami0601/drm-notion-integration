@@ -58,99 +58,96 @@ export async function processJsonRequest(c: Context, jsonData: NotionFormData) {
 
     // Notionフォームからのデータを処理
     const pageData = jsonData.data;
-    if (pageData?.properties) {
-      const properties = pageData.properties;
 
-      // イベント名の取得
-      let eventName = '';
-      if (properties.名前?.title && properties.名前.title.length > 0) {
-        eventName = properties.名前.title[0].plain_text || '';
-      }
+    if (!pageData?.properties) {
+      throw new Error('Notionフォームのデータが見つかりません');
+    }
 
-      // 開催日の取得
-      let eventDate = '';
-      if (properties.開催日?.date) {
-        eventDate = properties.開催日.date.start || '';
-      }
+    const properties = pageData.properties;
 
-      // CSVファイルURLの取得
-      let csvFileUrl = '';
-      if (properties['ファイル&メディア']?.files &&
-          properties['ファイル&メディア'].files.length > 0) {
-        csvFileUrl = properties['ファイル&メディア'].files[0].file?.url || '';
-      }
+    // イベント名の取得
+    let eventName = '';
+    if (properties.名前?.title && properties.名前.title.length > 0) {
+      eventName = properties.名前.title[0].plain_text || '';
+    }
 
-      // 必須項目の検証
-      if (!eventName) {
-        console.error('エラー: イベント名が指定されていません');
-        return c.json({
-          success: false,
-          error: 'イベント名が指定されていません'
-        }, 400);
-      }
+    // 開催日の取得
+    let eventDate = '';
+    if (properties.開催日?.date) {
+      eventDate = properties.開催日.date.start || '';
+    }
 
-      if (!eventDate) {
-        console.error('エラー: 開催日が指定されていません');
-        return c.json({
-          success: false,
-          error: '開催日が指定されていません'
-        }, 400);
-      }
+    // CSVファイルURLの取得
+    let csvFileUrl = '';
+    if (properties['ファイル&メディア']?.files &&
+        properties['ファイル&メディア'].files.length > 0) {
+      csvFileUrl = properties['ファイル&メディア'].files[0].file?.url || '';
+    }
 
-      if (!csvFileUrl) {
-        console.error('エラー: CSVファイルが見つかりません');
-        return c.json({
-          success: false,
-          error: 'CSVファイルが見つかりません'
-        }, 400);
-      }
-
-      try {
-        // CSVから生徒IDを抽出
-        const studentIds = await parseCSV(csvFileUrl);
-
-        if (studentIds.length === 0) {
-          console.error('エラー: CSVファイルに有効な生徒IDが含まれていません');
-          return c.json({
-            success: false,
-            error: 'CSVファイルに有効な生徒IDが含まれていません'
-          }, 400);
-        }
-
-        // 生徒情報を取得
-        const students = await getStudents(studentIds);
-
-        if (students.length === 0) {
-          console.error('エラー: 指定されたIDに一致する生徒が見つかりませんでした');
-          return c.json({
-            success: false,
-            error: '指定されたIDに一致する生徒が見つかりませんでした'
-          }, 404);
-        }
-
-        // 既存のイベントページを更新
-        const event = await updateEventParticipants(pageId, students);
-
-        return c.json({
-          success: true,
-          message: 'イベントの参加者を更新しました',
-          data: {
-            eventName,
-            eventDate,
-            studentCount: students.length,
-            eventId: event.id
-          }
-        });
-      } catch (innerError) {
-        console.error('処理エラー:', innerError);
-        throw innerError;
-      }
-    } else {
-      console.error('エラー: Notionフォームのデータ形式が不正です');
+    // 必須項目の検証
+    if (!eventName) {
+      console.error('エラー: イベント名が指定されていません');
       return c.json({
         success: false,
-        error: 'Notionフォームのデータ形式が不正です'
+        error: 'イベント名が指定されていません'
       }, 400);
+    }
+
+    if (!eventDate) {
+      console.error('エラー: 開催日が指定されていません');
+      return c.json({
+        success: false,
+        error: '開催日が指定されていません'
+      }, 400);
+    }
+
+    if (!csvFileUrl) {
+      console.error('エラー: CSVファイルが見つかりません');
+      return c.json({
+        success: false,
+        error: 'CSVファイルが見つかりません'
+      }, 400);
+    }
+
+    try {
+      // CSVから生徒IDを抽出
+      const studentIds = await parseCSV(csvFileUrl);
+
+      if (studentIds.length === 0) {
+        console.error('エラー: CSVファイルに有効な生徒IDが含まれていません');
+        return c.json({
+          success: false,
+          error: 'CSVファイルに有効な生徒IDが含まれていません'
+        }, 400);
+      }
+
+      // 生徒情報を取得
+      const students = await getStudents(studentIds);
+
+      if (students.length === 0) {
+        console.error('エラー: 指定されたIDに一致する生徒が見つかりませんでした');
+        return c.json({
+          success: false,
+          error: '指定されたIDに一致する生徒が見つかりませんでした'
+        }, 404);
+      }
+
+      // 既存のイベントページを更新
+      const event = await updateEventParticipants(pageId, students);
+
+      return c.json({
+        success: true,
+        message: 'イベントの参加者を更新しました',
+        data: {
+          eventName,
+          eventDate,
+          studentCount: students.length,
+          eventId: event.id
+        }
+      });
+    } catch (innerError) {
+      console.error('処理エラー:', innerError);
+      throw innerError;
     }
   } catch (error) {
     console.error('Notionデータ処理エラー:', error);
