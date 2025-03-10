@@ -1,5 +1,6 @@
 import { Client } from '@notionhq/client';
 import type { NotionPageId } from '../types';
+import { chunk } from 'remeda';
 
 // Notion APIクライアントと環境変数を保持する変数
 let notion: Client;
@@ -33,12 +34,9 @@ export async function getStudents(studentIds: string[]): Promise<NotionPageId[]>
   try {
     // NotionのAPIフィルター制限（最大100項目）に対応するため、IDをバッチ処理
     const BATCH_SIZE = 90; // 余裕を持って90に設定
-    const batches = [];
 
-    // 生徒IDを90個ずつのバッチに分割
-    for (let i = 0; i < studentIds.length; i += BATCH_SIZE) {
-      batches.push(studentIds.slice(i, i + BATCH_SIZE));
-    }
+    // remedaのchunk関数を使用してバッチに分割
+    const batches = chunk(studentIds, BATCH_SIZE);
 
     // 各バッチを順次処理し、結果を集約
     let allResults: NotionPageId[] = [];
