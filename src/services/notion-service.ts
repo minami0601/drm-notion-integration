@@ -64,8 +64,7 @@ export async function getStudents(
 		// 各バッチを順次処理
 		const batchResults: NotionPageId[][] = [];
 
-		for (let i = 0; i < batches.length; i++) {
-			const batch = batches[i];
+		for (const [i, batch] of batches.entries()) {
 			try {
 				const response = await notion.databases.query({
 					database_id: STUDENT_DATABASE_ID,
