@@ -1,61 +1,69 @@
-import { Hono } from 'hono';
-import type { Env } from './types';
-import { initNotionClient } from './services/notion-service';
-import { processJsonRequest } from './controllers/webhook-controller';
+import { Hono } from "hono";
+import type { Env } from "./types";
+import { initNotionClient } from "./services/notion-service";
+import { processJsonRequest } from "./controllers/webhook-controller";
 
 // アプリケーションの初期化
 const app = new Hono<{ Bindings: Env }>();
 
 // GETリクエストのWebhookエンドポイント
-app.get('/webhook', (c) => {
-  return c.json({
-    success: true,
-    message: 'Webhook GETエンドポイントは動作中です。データ送信にはPOSTリクエストを使用してください。'
-  });
+app.get("/webhook", (c) => {
+	return c.json({
+		success: true,
+		message:
+			"Webhook GETエンドポイントは動作中です。データ送信にはPOSTリクエストを使用してください。",
+	});
 });
 
 // POSTリクエストのWebhookエンドポイント
-app.post('/webhook', async (c) => {
-  // 環境変数の設定とNotionクライアントの初期化
-  const env = c.env;
-  initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID);
+app.post("/webhook", async (c) => {
+	// 環境変数の設定とNotionクライアントの初期化
+	const env = c.env;
+	initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID);
 
-  // Content-Typeに基づいてリクエストボディを処理
-  const contentType = c.req.header('content-type') || '';
+	// Content-Typeに基づいてリクエストボディを処理
+	const contentType = c.req.header("content-type") || "";
 
-  if (!contentType.includes('application/json')) {
-    return c.json({
-      success: false,
-      error: `サポートされていないContent-Type: ${contentType}. 'application/json'を使用してください`
-    }, 415);
-  }
+	if (!contentType.includes("application/json")) {
+		return c.json(
+			{
+				success: false,
+				error: `サポートされていないContent-Type: ${contentType}. 'application/json'を使用してください`,
+			},
+			415,
+		);
+	}
 
-  // JSONデータの処理
-  try {
-    const jsonData = await c.req.json();
-    return await processJsonRequest(c, jsonData);
-  } catch (jsonError) {
-    console.error('JSONデータの解析に失敗しました:', jsonError);
-    return c.json({
-      success: false,
-      error: `JSONデータの解析に失敗しました: ${jsonError instanceof Error ? jsonError.message : '不明なエラー'}`
-    }, 400);
-  }
-
+	// JSONデータの処理
+	try {
+		const jsonData = await c.req.json();
+		return await processJsonRequest(c, jsonData);
+	} catch (jsonError) {
+		console.error("JSONデータの解析に失敗しました:", jsonError);
+		return c.json(
+			{
+				success: false,
+				error: `JSONデータの解析に失敗しました: ${jsonError instanceof Error ? jsonError.message : "不明なエラー"}`,
+			},
+			400,
+		);
+	}
 });
 
 // 基本的なヘルスチェックエンドポイント
-app.get('/', (c) => c.json({
-  status: 'ok',
-  message: 'Notion Webhook Receiver is running',
-  endpoints: {
-    webhook: {
-      url: '/webhook',
-      method: 'POST',
-      description: 'Notionフォームからのデータを受け取るエンドポイント'
-    }
-  }
-}));
+app.get("/", (c) =>
+	c.json({
+		status: "ok",
+		message: "Notion Webhook Receiver is running",
+		endpoints: {
+			webhook: {
+				url: "/webhook",
+				method: "POST",
+				description: "Notionフォームからのデータを受け取るエンドポイント",
+			},
+		},
+	}),
+);
 
 // Cloudflare Workersのエクスポート
 export default app;
