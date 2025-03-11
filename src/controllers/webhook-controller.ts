@@ -56,11 +56,10 @@ export async function processJsonRequest(c: Context, jsonData: NotionFormData) {
       }, 400);
     }
 
-    // Notionフォームからのデータを処理
     const pageData = jsonData.data;
 
     if (!pageData?.properties) {
-      throw new Error('Notionフォームのデータが見つかりません');
+      throw new Error('データが見つかりません');
     }
 
     const properties = pageData.properties;

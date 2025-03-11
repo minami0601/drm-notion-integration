@@ -4,9 +4,9 @@
   "private": true,
   "engines": {
     "node": ">=20.0.0",
-    "pnpm": ">=10.0.0"
+    "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@10.4.1",
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
