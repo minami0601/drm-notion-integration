@@ -5,8 +5,6 @@ import { chunk } from 'remeda';
 // Notion APIクライアントと環境変数を保持する変数
 let notion: Client;
 let STUDENT_DATABASE_ID: string;
-let EVENT_DATABASE_ID: string;
-
 /**
  * バッチサイズの定数
  * NotionのAPIフィルター制限（最大100項目）に対応するため
@@ -41,10 +39,9 @@ function aggregateResults<T>(results: T[][]): T[] {
  * @param studentDbId 生徒データベースID
  * @param eventDbId イベントデータベースID
  */
-export function initNotionClient(apiKey: string, studentDbId: string, eventDbId: string): void {
+export function initNotionClient(apiKey: string, studentDbId: string): void {
   notion = new Client({ auth: apiKey });
   STUDENT_DATABASE_ID = studentDbId;
-  EVENT_DATABASE_ID = eventDbId;
 }
 
 /**

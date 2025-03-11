@@ -18,7 +18,7 @@ app.get('/webhook', (c) => {
 app.post('/webhook', async (c) => {
   // 環境変数の設定とNotionクライアントの初期化
   const env = c.env;
-  initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID, env.EVENT_DATABASE_ID);
+  initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID);
 
   // Content-Typeに基づいてリクエストボディを処理
   const contentType = c.req.header('content-type') || '';
