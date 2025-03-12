@@ -1,93 +1,69 @@
-import type { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
-import {
-	ButtonStyle,
-	ComponentType,
-	type RESTPostAPIChannelMessageJSONBody,
-} from "discord-api-types/v10";
 import { Hono } from "hono";
-import { formatProperty } from "./formatter";
+import type { Env } from "./types";
+import { initNotionClient } from "./services/notion-service";
+import { processJsonRequest } from "./controllers/webhook-controller";
 
-interface NotionWebhookBody {
-	data: PageObjectResponse;
-}
+// アプリケーションの初期化
+const app = new Hono<{ Bindings: Env }>();
 
-interface Env {
-	DISCORD_BOT_TOKEN: string;
-}
+// GETリクエストのWebhookエンドポイント
+app.get("/webhook", (c) => {
+	return c.json({
+		success: true,
+		message:
+			"Webhook GETエンドポイントは動作中です。データ送信にはPOSTリクエストを使用してください。",
+	});
+});
 
-interface DiscordErrorResponse {
-	code: number;
-	message: string;
-}
+// POSTリクエストのWebhookエンドポイント
+app.post("/webhook", async (c) => {
+	// 環境変数の設定とNotionクライアントの初期化
+	const env = c.env;
+	initNotionClient(env.NOTION_API_KEY, env.STUDENT_DATABASE_ID);
 
-async function sendDiscordMessage(
-	token: string,
-	channelId: string,
-	message: RESTPostAPIChannelMessageJSONBody,
-) {
-	const response = await fetch(
-		`https://discord.com/api/v10/channels/${channelId}/messages`,
-		{
-			method: "POST",
-			headers: {
-				Authorization: `Bot ${token}`,
-				"Content-Type": "application/json",
+	// Content-Typeに基づいてリクエストボディを処理
+	const contentType = c.req.header("content-type") || "";
+
+	if (!contentType.includes("application/json")) {
+		return c.json(
+			{
+				success: false,
+				error: `サポートされていないContent-Type: ${contentType}. 'application/json'を使用してください`,
 			},
-			body: JSON.stringify(message),
-		},
-	);
-
-	if (!response.ok) {
-		const errorBody = (await response.json()) as DiscordErrorResponse;
-		console.error(errorBody);
-
-		throw new Error(
-			`Discord API error: ${response.status} - ${errorBody.message}`,
+			415,
 		);
 	}
 
-	return response;
-}
-
-const app = new Hono<{ Bindings: Env }>();
-
-app.get("/", (c) => {
-	return c.json({ message: "ok" }, 200);
-});
-
-app.post("/:discordChannelId", async (c) => {
-	if (!c.env.DISCORD_BOT_TOKEN) {
-		throw new Error("DISCORD_BOT_TOKEN is not set");
-	}
-
-	const title = c.req.query("title");
-	const discordChannelId = c.req.param("discordChannelId");
-	const body = await c.req.json<NotionWebhookBody>();
-
-	const formattedProperties = Object.entries(body.data.properties)
-		.map(([key, property]) => `${key}: ${formatProperty(property)}`)
-		.join("\n");
-
-	await sendDiscordMessage(c.env.DISCORD_BOT_TOKEN, discordChannelId, {
-		content: [title, formattedProperties || "[No properties to display]"]
-			.filter(Boolean)
-			.join("\n"),
-		components: [
+	// JSONデータの処理
+	try {
+		const jsonData = await c.req.json();
+		return await processJsonRequest(c, jsonData);
+	} catch (jsonError) {
+		console.error("JSONデータの解析に失敗しました:", jsonError);
+		return c.json(
 			{
-				type: ComponentType.ActionRow,
-				components: [
-					{
-						type: ComponentType.Button,
-						label: "Open in Notion",
-						style: ButtonStyle.Link,
-						url: body.data.url,
-					},
-				],
+				success: false,
+				error: `JSONデータの解析に失敗しました: ${jsonError instanceof Error ? jsonError.message : "不明なエラー"}`,
 			},
-		],
-	});
-
-	return c.body(null, 204);
+			400,
+		);
+	}
 });
 
+// 基本的なヘルスチェックエンドポイント
+app.get("/", (c) =>
+	c.json({
+		status: "ok",
+		message: "Notion Webhook Receiver is running",
+		endpoints: {
+			webhook: {
+				url: "/webhook",
+				method: "POST",
+				description: "Notionフォームからのデータを受け取るエンドポイント",
+			},
+		},
+	}),
+);
+
+// Cloudflare Workersのエクスポート
 export default app;
