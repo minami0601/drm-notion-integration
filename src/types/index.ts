@@ -4,7 +4,6 @@
 export interface Env {
 	NOTION_API_KEY: string;
 	STUDENT_DATABASE_ID: string;
-	EVENT_DATABASE_ID: string;
 }
 
 /**
