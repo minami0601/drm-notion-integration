@@ -1,23 +1,7 @@
-import * as fastCsv from "fast-csv";
-import { Readable } from "node:stream";
+import { parse } from "csv-parse/browser/esm/sync";
 
 interface CsvRow {
 	[key: string]: string;
-}
-
-/**
- * string型のデータをReadableStreamに変換する関数
- *
- * @param string 変換する文字列
- * @returns Readable stream
- */
-function stringToStream(string: string): Readable {
-	const stream = new Readable({
-		read() {}, // 必須のreadメソッドを実装
-	});
-	stream.push(string);
-	stream.push(null);
-	return stream;
 }
 
 /**
@@ -38,38 +22,28 @@ export async function parseCSV(url: string): Promise<string[]> {
 
 		const csvContent = await response.text();
 
-		// 生徒IDを格納する配列
-		const studentIds: string[] = [];
-
-		// fast-csvでパース処理を行う
-		return new Promise<string[]>((resolve, reject) => {
-			const stream = stringToStream(csvContent);
-
-			fastCsv
-				.parseStream<CsvRow, CsvRow>(stream, {
-					headers: true, // ヘッダー行を使用
-					skipLines: 1, // 1行目をスキップ（2行目をヘッダーとして使用）
-					trim: true, // 空白を削除
-					ignoreEmpty: true, // 空行を無視
-				})
-				.on("data", (row: CsvRow) => {
-					// 'ID'カラムの値を取得（大文字小文字区別なし）
-					const idValue = Object.entries(row).find(
-						([key]) => key.toUpperCase() === "ID",
-					)?.[1];
-
-					if (idValue && typeof idValue === "string" && idValue.trim()) {
-						studentIds.push(idValue.trim());
-					}
-				})
-				.on("error", (error: Error) => {
-					console.error("CSV解析エラー:", error);
-					reject(error);
-				})
-				.on("end", () => {
-					resolve(studentIds);
-				});
+		// csv-parseを使用して同期的にパース
+		const records = parse(csvContent, {
+			columns: true, // ヘッダー行を使用
+			from_line: 2, // 1行目をスキップ（2行目をヘッダーとして使用）
+			trim: true, // 空白を削除
+			skip_empty_lines: true, // 空行を無視
 		});
+
+		// 生徒IDを抽出
+		const studentIds: string[] = [];
+		for (const row of records) {
+			// 'ID'カラムの値を取得（大文字小文字区別なし）
+			const idValue = Object.entries(row).find(
+				([key]) => key.toUpperCase() === "ID",
+			)?.[1];
+
+			if (idValue && typeof idValue === "string" && idValue.trim()) {
+				studentIds.push(idValue.trim());
+			}
+		}
+
+		return studentIds;
 	} catch (error) {
 		console.error("CSV解析エラー:", error);
 		throw error;
